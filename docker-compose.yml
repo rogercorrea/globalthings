@@ -1,23 +1,6 @@
-services:
-  kafka:
-    image: confluentinc/cp-kafka:7.6.1
-    container_name: kafka
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: "broker,controller"
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:29093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      CLUSTER_ID: "dY7E42NyRLWxzKp9yNpgAw=="
-    ports:
-      - "9092:9092"
-    restart: always
-    env_file:
-      - .env
+version: '3.9'
 
+services:
   timescaledb:
     image: timescale/timescaledb-ha:pg14-latest
     container_name: timescaledb
@@ -31,6 +14,27 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_PROCESS_ROLES: broker,controller
+      CLUSTER_ID: "seu_cluster_id_aqui"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./kafka-init:/etc/kafka-init
+    command: ["sh", "-c", "/etc/kafka-init/init-topics.sh && /etc/confluent/docker/run"]
+    depends_on:
+      - timescaledb
+    restart: always
 
   mailhog:
     image: mailhog/mailhog
@@ -58,4 +62,5 @@ services:
       - .env
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
-      ConnectionStrings__Sensor: ${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+      ConnectionStrings__DefaultConnection: ${CONNECTIONSTRINGS__DEFAULTCONNECTION}
+    restart: always
