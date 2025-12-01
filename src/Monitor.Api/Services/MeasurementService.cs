@@ -25,7 +25,6 @@ public class MeasurementService
 
         await _repo.AddRangeAsync(entities);
 
-        // avaliar alertas por sensor
         var grouped = entities.GroupBy(e => e.Codigo);
         foreach (var g in grouped)
         {

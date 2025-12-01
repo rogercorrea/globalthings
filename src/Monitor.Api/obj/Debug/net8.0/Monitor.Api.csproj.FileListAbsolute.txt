@@ -102,3 +102,4 @@
 /home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Debug/net8.0/Monitor.Api.pdb
 /home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Debug/net8.0/Monitor.Api.genruntimeconfig.cache
 /home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Debug/net8.0/ref/Monitor.Api.dll
+/home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Debug/net8.0/Monitor.Api.sourcelink.json

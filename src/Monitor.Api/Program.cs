@@ -20,16 +20,21 @@ builder.Services.AddScoped<IMeasurementRepository, EfMeasurementRepository>();
 builder.Services.AddScoped<IAlertNotifier, EmailNotifier>();
 builder.Services.AddScoped<AlertEvaluator>();
 builder.Services.AddScoped<MeasurementService>();
+//builder.Services.AddHostedService<KafkaMeasurementConsumer>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
 
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    // migrations automatizadas (desenvolvimento)
     db.Database.Migrate();
 }
 

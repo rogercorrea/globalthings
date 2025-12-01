@@ -13,7 +13,7 @@ public class MeasurementsController : ControllerBase
     public async Task<IActionResult> PostBatch([FromBody] MeasurementBatchDto dto)
     {
         if (dto?.Measurements == null || !dto.Measurements.Any())
-            return BadRequest("Nenhuma medição enviada.");
+            return BadRequest("No measurements provided.");
 
         await _svc.ProcessBatchAsync(dto.Measurements);
         return Accepted();
