@@ -1,0 +1,61 @@
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      CLUSTER_ID: "dY7E42NyRLWxzKp9yNpgAw=="
+    ports:
+      - "9092:9092"
+    restart: always
+    env_file:
+      - .env
+
+  timescaledb:
+    image: timescale/timescaledb-ha:pg14-latest
+    container_name: timescaledb
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    restart: always
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sensor-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      mailhog:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ConnectionStrings__Sensor: ${CONNECTIONSTRINGS__DEFAULTCONNECTION}

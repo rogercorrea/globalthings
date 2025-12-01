@@ -1,0 +1,7 @@
+/home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Release/net8.0/Monitor.Api.csproj.AssemblyReference.cache
+/home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Release/net8.0/Monitor.Api.GeneratedMSBuildEditorConfig.editorconfig
+/home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Release/net8.0/Monitor.Api.AssemblyInfoInputs.cache
+/home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Release/net8.0/Monitor.Api.AssemblyInfo.cs
+/home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Release/net8.0/Monitor.Api.csproj.CoreCompileInputs.cache
+/home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Release/net8.0/Monitor.Api.MvcApplicationPartsAssemblyInfo.cs
+/home/roger/Downloads/sensor-monitoring-scaffold/src/Monitor.Api/obj/Release/net8.0/Monitor.Api.MvcApplicationPartsAssemblyInfo.cache
