@@ -1,39 +1,185 @@
-# Respostas ao exercício técnico — Sensor Monitoring (DEV Pleno)
+# Sensor Monitoring Scaffold
 
-Este documento responde às questões do teste técnico, descreve as APIs implementadas no projeto e traz exemplos de código (C# / ASP.NET Core) usados no scaffold.
-
----
-
-## PARTE 01
-
-### a) Qual/Quais API(s) você criaria para receber os dados dos sensores? Justifique.
-
-**APIs propostas (implementadas):**
-
-1. `POST /api/measurements`  
-   - Recebe uma única medição (MeasurementDto). Ideal para envio pontual.
-2. `POST /api/measurements/batch`  
-   - Recebe um lote de medições (MeasurementBatchDto). Ideal para firmware que acumula leituras e envia em lote quando a rede volta. Melhor desempenho e menor overhead por chamada.
-3. Endpoints auxiliares de cadastro e consulta:
-   - `GET /api/equipments/{id}/last-measurements` — consulta últimas medições por sensor (usado na Parte 02).
-   - `POST /api/sensors/link` — vincular sensor ao equipamento/setor.
-
-**Justificativa:**
-- Separar *single* e *batch* permite que dispositivos com conectividade intermitente façam retry e enviem pacotes agregados sem criar overhead no servidor.
-- Endpoints REST simples facilitam integração com firmware e integrações (Web UI, suporte).
-- Uso de POST para inserção garante idempotência no cliente (com tratamento opcional de deduplicação no servidor).
+Este projeto implementa uma aplicação para monitoramento de sensores conectados a equipamentos/setores, com armazenamento de medições em TimescaleDB e alertas via e-mail.
 
 ---
 
-### b) Como definir o objeto de request no ASP.NET Core? (exemplos)
+## PARTE 01 – APIs para receber medições
 
-**DTOs usados no projeto:**
+**a) Qual/Quais API(s) você criaria para que receber esses dados?**
 
-`src/Monitor.Api/DTOs/MeasurementDto.cs`
+Eu criaria a API:
+
+```
+POST /api/measurements
+```
+
+Justificativa: Um endpoint único para gravação de medições é suficiente, pois cada medição possui informações como `SensorId`, `Value` e `Timestamp`. Isso simplifica a ingestão de dados e facilita a integração com Kafka ou outros sistemas de mensageria.
+
+**b) Objeto de request da API em ASP.NET Core**
+
 ```csharp
-public record MeasurementDto
+public class CreateMeasurementDto
 {
-    public string Codigo { get; init; } = default!;
-    public DateTimeOffset DataHoraMedicao { get; init; }
-    public decimal Medicao { get; init; }
+    public long SensorId { get; set; }
+    public double Value { get; set; }
+    public DateTime Timestamp { get; set; }
 }
+
+[HttpPost]
+[Route("api/measurements")]
+public IActionResult Create([FromBody] CreateMeasurementDto dto)
+{
+    _measurementService.Add(dto);
+    return Ok();
+}
+```
+
+**c) Banco de dados recomendado**
+
+TimescaleDB (PostgreSQL com extensão para séries temporais).
+
+Justificativa: Otimizado para grandes volumes de dados por segundo, consultas por intervalos de tempo e agregações em séries temporais.
+
+---
+
+## PARTE 02 – APIs para vincular sensores a equipamentos
+
+**a) API para vincular Sensor a Equipamento/Setor**
+
+```csharp
+public class LinkSensorDto
+{
+    public long SensorId { get; set; }
+    public long EquipmentId { get; set; }
+}
+
+[HttpPost("api/sensors/link")]
+public IActionResult LinkSensor([FromBody] LinkSensorDto dto)
+{
+    _sensorService.LinkToEquipment(dto.SensorId, dto.EquipmentId);
+    return Ok();
+}
+```
+
+**b) API para retornar últimas 10 medições de cada sensor de um Equipamento/Setor**
+
+```csharp
+[HttpGet("api/equipments/{equipmentId}/measurements")]
+public IActionResult GetLastMeasurements(long equipmentId)
+{
+    var sensors = _sensorService.GetByEquipmentId(equipmentId);
+    var result = sensors.ToDictionary(
+        s => s.Id,
+        s => _measurementService.GetLastMeasurements(s.Id, 10)
+    );
+    return Ok(result);
+}
+```
+
+---
+
+## PARTE 03 – Alertas de medições fora de limites
+
+**a) Proposta de solução**
+
+- Usar **Kafka** para ingestão em tempo real.  
+- Implementar regras no backend:  
+  - 5 medições consecutivas fora do limite (1-50).  
+  - Média das últimas 50 medições considerando margem de erro ±2.  
+- Enviar alertas via e-mail (SMTP/MailHog para testes).  
+
+**b) Algoritmo de alerta**
+
+```csharp
+public void EvaluateSensor(Sensor sensor)
+{
+    var last50 = _measurementService.GetLastMeasurements(sensor.Id, 50);
+    double average = last50.Average(m => m.Value);
+
+    // Regra 1: 5 medições consecutivas fora do limite
+    if (last50.TakeLast(5).All(m => m.Value < 1 || m.Value > 50))
+        _alertNotifier.Send($"Sensor {sensor.Id} excedeu limites 5 vezes consecutivas");
+
+    // Regra 2: Média com margem de erro
+    if (average < 1 + 2 || average > 50 - 2)
+        _alertNotifier.Send($"Sensor {sensor.Id} merece atenção (média = {average})");
+}
+```
+
+**c) Exemplo de teste unitário**
+
+```csharp
+[Fact]
+public void Alert_When_5ConsecutiveOutOfRange()
+{
+    var measurements = new List<Measurement>
+    {
+        new Measurement { Value = 0.5 },
+        new Measurement { Value = 0.8 },
+        new Measurement { Value = 51 },
+        new Measurement { Value = 52 },
+        new Measurement { Value = 49 }
+    };
+
+    var sensor = new Sensor { Id = 1 };
+    _measurementServiceMock.Setup(m => m.GetLastMeasurements(1, 50))
+        .Returns(measurements);
+
+    _alertEvaluator.EvaluateSensor(sensor);
+
+    _alertNotifierMock.Verify(n => n.Send(It.IsAny<string>()), Times.AtLeastOnce);
+}
+```
+
+---
+
+## PARTE 04 – Alta ingestão de dados
+
+**Solução proposta**
+
+- Ingestão assíncrona via **Kafka**.  
+- Escalar **consumers** em paralelo para processar dados.  
+- Particionar tópicos por sensor/setor para paralelismo.  
+- Retenção e compressão de dados em **TimescaleDB** para otimizar armazenamento.  
+
+Justificativa: Desacopla ingestão e processamento, garantindo que picos de dados não travem o sistema.
+
+---
+
+## Tecnologias utilizadas
+
+- **ASP.NET Core 7** – Backend e APIs REST  
+- **Entity Framework Core** – ORM para PostgreSQL/TimescaleDB  
+- **TimescaleDB** – Banco de dados de séries temporais  
+- **Kafka** – Mensageria em tempo real  
+- **MailHog** – Testes de envio de e-mail  
+- **Swagger** – Documentação e testes de API  
+
+---
+
+## Estrutura de pastas
+
+```
+/src
+    /Controllers
+    /Data
+    /Services
+/Dockerfile
+/docker-compose.yml
+/README.md
+```
+
+---
+
+## Como rodar o projeto
+
+```bash
+docker compose up --build
+```
+
+- API: `http://localhost:8080/swagger`
+- MailHog: `http://localhost:8025`
+- TimescaleDB: porta 5432
+- Kafka: porta 9092
+
