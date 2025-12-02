@@ -40,6 +40,7 @@ public IActionResult Create([FromBody] CreateMeasurementDto dto)
 TimescaleDB (PostgreSQL com extensão para séries temporais).
 
 Justificativa: Otimizado para grandes volumes de dados por segundo, consultas por intervalos de tempo e agregações em séries temporais.
+Também é possível utilizar bancos de dados puramente temporais, como InfluxDB, TSDB ou soluções pagas, com o Pi System, da Aveva.
 
 ---
 
