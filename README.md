@@ -1,4 +1,4 @@
-# Sensor Monitoring Scaffold
+# Sensor Monitoring API
 
 Este projeto implementa uma aplicação para monitoramento de sensores conectados a equipamentos/setores, com armazenamento de medições em TimescaleDB e alertas via e-mail.
 
