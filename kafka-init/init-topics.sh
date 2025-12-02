@@ -1,13 +1,17 @@
 #!/bin/bash
+
+echo "Waiting for Kafka to start..."
+sleep 10
+
 set -e
 
 echo "[Kafka init] Waiting for Kafka broker..."
-cub kafka-ready -b localhost:9092 1 20
+cub kafka-ready -b kafka:9092 1 20
 
 echo "[Kafka init] Creating topics..."
 
 kafka-topics --create --topic sensors.measurements \
-  --bootstrap-server localhost:9092 \
+  --bootstrap-server kafka:9092 \
   --partitions 1 \
   --replication-factor 1 \
   --if-not-exists

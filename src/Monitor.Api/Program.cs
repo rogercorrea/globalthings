@@ -20,7 +20,7 @@ builder.Services.AddScoped<IMeasurementRepository, EfMeasurementRepository>();
 builder.Services.AddScoped<IAlertNotifier, EmailNotifier>();
 builder.Services.AddScoped<AlertEvaluator>();
 builder.Services.AddScoped<MeasurementService>();
-//builder.Services.AddHostedService<KafkaMeasurementConsumer>();
+builder.Services.AddHostedService<KafkaMeasurementConsumer>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
